@@ -2,22 +2,19 @@
   <v-layout column justify-center>
     <v-flex xs12 sm8 md6>
       <div class="container">
-        <h3 class="text-center">{{ username ? username : 'Messaging' }}</h3>
-        <div v-if="!isLogin">
+        <div v-if="!user">
           <v-row align="center">
-            <v-col class="text-center" cols="12" lg="8">
+            <v-col v-if="user" class="text-center" cols="12" lg="12">
               <v-text-field
-                v-model="username"
-                :counter="10"
-                label="First name"
+                v-model="user.displayName"
+                label="Display name"
                 required
+                disabled="true"
               ></v-text-field>
             </v-col>
-            <v-col class="text-center" cols="12" lg="4">
+            <v-col v-else class="text-center" cols="12" lg="12">
               <div class="my-2">
-                <v-btn small @click="signInWithGoogleAuthentication"
-                  >Login</v-btn
-                >
+                <v-btn small @click="login">Login</v-btn>
               </div>
             </v-col>
           </v-row>
@@ -26,61 +23,147 @@
           <div class="inbox_msg">
             <div class="inbox_people">
               <div class="headind_srch">
-                <div class="recent_heading">
-                  <h4>Recent</h4>
-                </div>
-                <div class="srch_bar">
-                  <div class="stylish-input-group">
-                    <input
-                      type="text"
-                      class="search-bar"
-                      placeholder="Search"
+                <v-row>
+                  <v-col v-if="user" align="left" justify="center" cols="3">
+                    <v-avatar size="40" class="mx-2">
+                      <img :src="user.photoURL" />
+                    </v-avatar>
+                  </v-col>
+                  <v-col v-if="user" cols="9" align="right" justify="center">
+                    <!-- <v-btn class="mx-2" fab dark small depressed color="#f5f5f5">
+                      <v-icon color="#000000">mdi-plus</v-icon>
+                    </v-btn>-->
+                    <GroupDialog
+                      v-if="users.length > 0"
+                      :users="users"
+                      @created="chooseGroup($event)"
                     />
+                  </v-col>
+                </v-row>
+                <v-row height="100px" no-gutters>
+                  <v-col cols="12" align="center" justify="center" class="px-2">
+                    <v-autocomplete
+                      v-model="filtered"
+                      depressed
+                      :items="users"
+                      :filter="filterUser"
+                      color="dark"
+                      placeholder="Start typing to Search"
+                      append-icon="mdi-magnify"
+                      solo
+                      @change="chooseUser"
+                    >
+                      <template v-slot:selection="data">
+                        <v-chip
+                          v-bind="data.attrs"
+                          :input-value="data.selected"
+                          close
+                          @click="data.select"
+                          @click:close="remove(data.item)"
+                        >
+                          <v-avatar left>
+                            <v-img :src="data.item.photoURL"></v-img>
+                          </v-avatar>
+                          {{ data.item.displayName }}
+                        </v-chip>
+                      </template>
+                      <template v-slot:item="data">
+                        <template v-if="typeof data.item !== 'object'">
+                          <v-list-item-content
+                            v-text="data.item"
+                          ></v-list-item-content>
+                        </template>
+                        <template v-else>
+                          <v-list-item-avatar>
+                            <img :src="data.item.photoURL" />
+                          </v-list-item-avatar>
+                          <v-list-item-content>
+                            <v-list-item-title
+                              v-text="data.item.displayName"
+                            ></v-list-item-title>
+                            <v-list-item-subtitle
+                              v-text="data.item.email"
+                            ></v-list-item-subtitle>
+                          </v-list-item-content>
+                        </template>
+                      </template>
+                    </v-autocomplete>
                     <span class="input-group-addon">
                       <button type="button">
                         <i class="fa fa-search" aria-hidden="true"></i>
                       </button>
                     </span>
-                  </div>
-                </div>
+                  </v-col>
+                </v-row>
               </div>
               <div class="inbox_chat">
-                <div class="chat_list active_chat">
-                  <div class="chat_people">
-                    <div class="chat_img">
-                      <v-icon color="white">mdi-account-circle</v-icon>
-                    </div>
-                    <div class="chat_ib">
-                      <h5>
-                        Bach Hoang
-                        <span class="chat_date">Dec 25</span>
-                      </h5>
-                      <p>Test firebase chat</p>
-                    </div>
-                  </div>
-                </div>
+                <v-row
+                  v-for="group in groups"
+                  :key="group.id"
+                  class="chat_list px-0 mx-0"
+                  @click="chooseGroup(group)"
+                >
+                  <v-col cols="3" class="px-6">
+                    <v-avatar left>
+                      <v-img
+                        v-if="getGroupInfo(group).type === 0"
+                        size="20"
+                        :src="getGroupInfo(group).photoURL"
+                      ></v-img>
+                      <v-icon v-else color="primary" size="50"
+                        >mdi-account-multiple</v-icon
+                      >
+                    </v-avatar>
+                  </v-col>
+                  <v-col cols="9">
+                    <v-row no-gutters>
+                      <v-col cols="12">{{ getGroupInfo(group).name }}</v-col>
+                      <v-col cols="4" class="text-no-wrap">
+                        {{ group.recentMessage.messageText + '...' }}
+                      </v-col>
+                      <v-col cols="8" class="chat_date mt-1">{{
+                        group.modifiedAt.seconds | formatUnix
+                      }}</v-col>
+                    </v-row>
+                    <!-- <p>Test firebase chat</p> -->
+                  </v-col>
+                </v-row>
               </div>
             </div>
             <div class="mesgs">
+              <div v-if="loading" class="text-center">
+                <v-progress-circular
+                  indeterminate
+                  color="primary"
+                ></v-progress-circular>
+              </div>
               <div class="msg_history">
                 <div v-for="(msg, i) in messages" :key="i">
-                  <div v-if="msg.username === username" class="outgoing_msg">
+                  <div v-if="msg.sentBy === user.uid" class="outgoing_msg">
                     <div class="sent_msg">
-                      <p>{{ msg.message }}</p>
+                      <p>{{ msg.messageText }}</p>
                       <span class="time_date">{{
-                        msg.createAt.seconds | formatUnix
+                        msg.sentAt.seconds | formatUnix
                       }}</span>
                     </div>
                   </div>
                   <div v-else class="incoming_msg">
-                    <div class="incoming_msg_img">
-                      <v-icon color="primary">mdi-account-circle</v-icon>
+                    <div
+                      v-if="currentGroup.users.length > 0"
+                      class="incoming_msg_img"
+                    >
+                      <v-avatar left>
+                        <v-img
+                          :src="getUserGroupById(msg.sentBy).photoURL"
+                        ></v-img>
+                      </v-avatar>
+                      <!-- <v-icon color="primary">mdi-account-circle</v-icon> -->
                     </div>
                     <div class="received_msg">
                       <div class="received_withd_msg">
-                        <p>{{ msg.message }}</p>
+                        <p>{{ msg.messageText }}</p>
                         <span class="time_date">{{
-                          msg.createAt.seconds | formatUnix
+                          msg.sentAt.seconds | formatUnix
                         }}</span>
                       </div>
                     </div>
@@ -88,27 +171,34 @@
                 </div>
               </div>
               <div class="type_msg">
-                <div class="input_msg_write">
-                  <input
-                    v-model="message"
-                    type="text"
-                    class="write_msg"
-                    placeholder="Type a message"
-                    @keyup.enter="saveMessage"
-                  />
-                  <v-btn
-                    class="mx-2"
-                    fab
-                    dark
-                    small
-                    depressed
-                    color="primary"
-                    style="position: absolute; right: 0; top: 10px;"
-                    @click="saveMessage"
-                  >
-                    <v-icon color="white">mdi-send</v-icon>
-                  </v-btn>
-                </div>
+                <v-row no-gutters>
+                  <v-col cols="11">
+                    <v-textarea
+                      v-model="message"
+                      solo
+                      flat
+                      depressed
+                      no-resize
+                      placeholder="Type a message"
+                      height="80"
+                      @keyup.enter="sendMessage"
+                    ></v-textarea>
+                  </v-col>
+                  <v-col cols="1">
+                    <v-btn
+                      class="mx-2"
+                      fab
+                      dark
+                      small
+                      depressed
+                      color="primary"
+                      style="position: absolute; right: 0; top: 10px;"
+                      @click="saveMessage"
+                    >
+                      <v-icon color="white">mdi-send</v-icon>
+                    </v-btn>
+                  </v-col>
+                </v-row>
               </div>
             </div>
           </div>
@@ -119,103 +209,114 @@
 </template>
 
 <script>
-import firebase from '~/plugins/firebase.js'
-const db = firebase.firestore()
-const auth = firebase.auth()
+import GroupDialog from '~/components/GroupDialog'
+import group from '~/mixins/group'
+import authentication from '~/mixins/authentication'
+import user from '~/mixins/user'
+import message from '~/mixins/message'
+
 export default {
-  components: {},
+  components: { GroupDialog },
+  mixins: [group, authentication, user, message],
   data() {
     return {
-      user: undefined,
-      username: undefined,
-      isLogin: false,
+      username: null,
       message: null,
-      messages: [],
+      user: null,
+      users: [],
+      groups: [],
+      filtered: null,
+      search: null,
+      clientSearch: null,
+      indexUser: null,
+      currentGroup: null,
+      dialog: false,
+      loading: false,
     }
   },
   watch: {
     async user(val) {
-      const exist = await this.getUserFromFirebase(val)
-      if (exist) return
-      this.saveUserToFirestore(val)
+      if (!val) return
+      this.saveUserToLocalStorage(val)
+      this.saveUserToStore(val)
+      this.fetchUsers()
+      const exist = await this.checkUserExisted(val)
+      if (exist) {
+        this.fetchGroupByUserID(val.uid)
+        return
+      }
+      this.saveUser(val)
     },
   },
   created() {
-    this.fetchMessages()
+    this.user = this.decryptUser()
   },
   methods: {
-    saveMessage() {
-      const vm = this
-      if (this.message.trim()) {
-        db.collection('chat')
-          .add({
-            message: this.message,
-            createAt: new Date(),
-            username: this.username,
-          })
-          .then(function (docRef) {
-            vm.message = null
-          })
-          .catch(function (error) {
-            // eslint-disable-next-line no-console
-            console.error('Error adding document: ', error)
-          })
+    async login() {
+      this.user = await this.signInWithGoogleAuthentication()
+    },
+    async chooseUser(user) {
+      let group = await this.filterGroup([this.user.uid, user.uid])
+      if (group == null) {
+        group = await this.createGroup(
+          [this.user.uid, user.uid],
+          this.user.uid,
+          'Private',
+          0
+        )
+      }
+      this.chooseGroup(group)
+      this.filtered = null
+    },
+    async chooseGroup(group) {
+      this.messages = []
+      this.loading = true
+      this.currentGroup = group
+      await this.fetchUsersByGroup(this.currentGroup).then(
+        (response) => (this.currentGroup.users = response)
+      )
+      setTimeout(async () => {
+        await this.fetchMessagesByGroupId(this.currentGroup.id)
+        this.loading = false
+      }, 200)
+    },
+    filterUser(item, queryText, itemText) {
+      const textOne = item.displayName.toLowerCase()
+      const textTwo = item.email.toLowerCase()
+      const searchText = queryText.toLowerCase()
+      return textOne.includes(searchText) || textTwo.includes(searchText)
+    },
+    async sendMessage() {
+      const message = await this.saveMessage(this.message, this.currentGroup.id)
+      if (message) {
+        this.message = null
+        const group = { ...this.currentGroup }
+        group.users = null
+        group.modifiedAt = new Date()
+        group.recentMessage = { ...message, ...{ readBy: [] } }
+        this.updateGroup(group)
       }
     },
-    fetchMessages() {
-      const vm = this
-      db.collection('chat')
-        .orderBy('createAt')
-        .onSnapshot((querySnapshot) => {
-          const allMessages = []
-          querySnapshot.forEach((doc) => {
-            allMessages.push(doc.data())
-          })
-          vm.messages = allMessages
-        })
+    getUserGroupById(userId) {
+      return this.currentGroup.users.filter((user) => user.uid === userId)[0]
     },
-    signInWithGoogleAuthentication() {
-      const vm = this
-      const provider = new firebase.auth.GoogleAuthProvider()
-      auth
-        .signInWithPopup(provider)
-        .then(function (result) {
-          // The signed-in user info.
-          vm.user = result.user
-          vm.saveToStore(vm.user)
-        })
-        .catch(function (error) {
-          // eslint-disable-next-line no-console
-          console.error(error)
-        })
+    getUserById(userId) {
+      return this.users.filter((user) => user.uid === userId)[0]
     },
-    saveToStore(user) {
-      // save to vuex store
-      this.$store.commit('user/add', user)
-    },
-    saveUserToFirestore(user) {
-      // eslint-disable-next-line no-console
-      const userRef = db.collection('user')
-      userRef.doc(user.uid).set({
-        uid: user.uid,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
-        email: user.email,
-      })
-    },
-    getUserFromFirebase(user) {
-      const docRef = db.collection('user').doc(user.uid)
-      return new Promise((resolve, reject) => {
-        docRef
-          .get()
-          .then(function (doc) {
-            resolve(doc.exists)
-          })
-          .catch(function (error) {
-            // eslint-disable-next-line no-console
-            console.error('Error getting document:', error)
-          })
-      })
+    getGroupInfo(group) {
+      const result = {}
+      if (group.type === 0) {
+        const uid = group.members.filter(
+          (member) => member !== this.user.uid
+        )[0]
+        const receiver = this.getUserById(uid)
+        result.name = receiver.displayName
+        result.photoURL = receiver.photoURL
+      } else {
+        result.name = group.name
+      }
+      result.type = group.type
+      return result
     },
   },
 }
@@ -229,7 +330,7 @@ img {
   max-width: 100%;
 }
 .inbox_people {
-  background: #f8f8f8 none repeat scroll 0 0;
+  background: #ffffff none repeat scroll 0 0;
   float: left;
   overflow: hidden;
   width: 40%;
@@ -251,12 +352,12 @@ img {
 .srch_bar {
   display: inline-block;
   text-align: right;
-  width: 60%;
+  width: 100%;
 }
 .headind_srch {
-  padding: 10px 29px 10px 20px;
   overflow: hidden;
   border-bottom: 1px solid #c4c4c4;
+  height: 140px;
 }
 
 .recent_heading h4 {
@@ -302,7 +403,7 @@ img {
 }
 .chat_ib {
   float: left;
-  padding: 0 0 0 15px;
+  padding: 10px 0 0 15px;
   width: 88%;
 }
 
@@ -312,8 +413,7 @@ img {
 }
 .chat_list {
   border-bottom: 1px solid #c4c4c4;
-  margin: 0;
-  padding: 18px 16px 10px;
+  cursor: pointer;
 }
 .inbox_chat {
   height: 550px;
@@ -347,7 +447,7 @@ img {
   color: #747474;
   display: block;
   font-size: 12px;
-  margin: 8px 0 0;
+  margin: 4px 0 0;
 }
 .received_withd_msg {
   width: 57%;
@@ -377,7 +477,7 @@ img {
 }
 .input_msg_write input {
   background: rgba(0, 0, 0, 0) none repeat scroll 0 0;
-  border: medium none;
+  /* border: medium none; */
   color: #4c4c4c;
   font-size: 15px;
   min-height: 48px;
@@ -407,5 +507,11 @@ img {
 .msg_history {
   height: 516px;
   overflow-y: auto;
+}
+.chat_date {
+  color: rgba(0, 0, 0, 0.4);
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 400;
 }
 </style>

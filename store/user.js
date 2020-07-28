@@ -3,18 +3,20 @@ export const state = () => ({
 })
 
 export const mutations = {
-  add(state, { uid, displayName, photoURL, email }) {
+  add(state, { uid, displayName, photoURL, email, groups }) {
     state.user = {
       uid,
       displayName,
       photoURL,
       email,
+      groups,
     }
   },
-  remove(state, { todo }) {
+  remove(state, payload) {
     state.user = undefined
   },
-  toggle(state, todo) {
-    todo.done = !todo.done
-  },
+}
+
+export const getters = {
+  getUser: (state) => state.user,
 }

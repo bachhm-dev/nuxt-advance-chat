@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@nuxtjs/axios": "^5.11.0",
+    "crypto-js": "^4.0.0",
     "firebase": "^7.16.1",
     "moment": "^2.27.0",
     "moment-timezone": "^0.5.31",
