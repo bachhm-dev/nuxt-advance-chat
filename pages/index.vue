@@ -30,9 +30,6 @@
                     </v-avatar>
                   </v-col>
                   <v-col v-if="user" cols="9" align="right" justify="center">
-                    <!-- <v-btn class="mx-2" fab dark small depressed color="#f5f5f5">
-                      <v-icon color="#000000">mdi-plus</v-icon>
-                    </v-btn>-->
                     <GroupDialog
                       v-if="users.length > 0"
                       :users="users"
