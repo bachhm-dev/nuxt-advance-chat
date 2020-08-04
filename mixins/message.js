@@ -7,11 +7,11 @@ export default {
     }
   },
   methods: {
-    saveMessage(messageText, currentGroupId) {
+    saveMessage(messageText, sentAt, currentGroupId) {
       if (messageText.trim()) {
         const message = {
           messageText,
-          sentAt: new Date(),
+          sentAt,
           sentBy: this.user.uid,
         }
         return new Promise((resolve, reject) => {

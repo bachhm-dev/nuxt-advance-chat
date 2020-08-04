@@ -118,12 +118,12 @@
                   <v-col cols="9">
                     <v-row no-gutters>
                       <v-col cols="12">{{ getGroupInfo(group).name }}</v-col>
-                      <v-col cols="4" class="text-no-wrap">
-                        {{ group.recentMessage.messageText + '...' }}
-                      </v-col>
-                      <v-col cols="8" class="chat_date mt-1">{{
-                        group.modifiedAt.seconds | formatUnix
+                      <v-col cols="4" class="text-no-wrap">{{
+                        group.recentMessage.messageText + '...'
                       }}</v-col>
+                      <v-col cols="8" class="chat_date mt-1">
+                        {{ group.modifiedAt.seconds | formatUnix }}
+                      </v-col>
                     </v-row>
                     <!-- <p>Test firebase chat</p> -->
                   </v-col>
@@ -142,9 +142,9 @@
                   <div v-if="msg.sentBy === user.uid" class="outgoing_msg">
                     <div class="sent_msg">
                       <p>{{ msg.messageText }}</p>
-                      <span class="time_date">{{
-                        msg.sentAt.seconds | formatUnix
-                      }}</span>
+                      <span class="time_date">
+                        {{ msg.sentAt.seconds | formatUnix }}
+                      </span>
                     </div>
                   </div>
                   <div v-else class="incoming_msg">
@@ -162,9 +162,9 @@
                     <div class="received_msg">
                       <div class="received_withd_msg">
                         <p>{{ msg.messageText }}</p>
-                        <span class="time_date">{{
-                          msg.sentAt.seconds | formatUnix
-                        }}</span>
+                        <span class="time_date">
+                          {{ msg.sentAt.seconds | formatUnix }}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -287,13 +287,22 @@ export default {
       return textOne.includes(searchText) || textTwo.includes(searchText)
     },
     async sendMessage() {
-      const message = await this.saveMessage(this.message, this.currentGroup.id)
+      const sentAt = new Date()
+      const message = await this.saveMessage(
+        this.message,
+        sentAt,
+        this.currentGroup.id
+      )
       if (message) {
         this.message = null
-        const group = { ...this.currentGroup }
-        group.users = null
-        group.modifiedAt = new Date()
-        group.recentMessage = { ...message, ...{ readBy: [] } }
+        const group = {
+          ...this.currentGroup,
+          ...{
+            users: null,
+            modifiedAt: sentAt,
+            recentMessage: { ...message, ...{ readBy: [] } },
+          },
+        }
         this.updateGroup(group)
       }
     },
