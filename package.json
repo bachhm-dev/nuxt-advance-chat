@@ -15,7 +15,7 @@
     "@nuxtjs/axios": "^5.11.0",
     "crypto-js": "^4.0.0",
     "firebase": "^7.16.1",
-    "moment": "^2.27.0",
+    "moment": "^2.29.4",
     "moment-timezone": "^0.5.31",
     "nuxt": "^2.13.0"
   },
