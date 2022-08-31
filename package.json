@@ -16,7 +16,7 @@
     "crypto-js": "^4.0.0",
     "firebase": "^7.16.1",
     "moment": "^2.27.0",
-    "moment-timezone": "^0.5.31",
+    "moment-timezone": "^0.5.35",
     "nuxt": "^2.13.0"
   },
   "devDependencies": {
